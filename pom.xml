@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>cn.puppys.mygateway</groupId>
+	<artifactId>mygateway</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
+
+	<name>mygateway</name>
+	<description>Demo project for Spring Boot</description>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.0.4.RELEASE</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>1.8</java.version>
+		<spring-cloud.version>Finchley.SR1</spring-cloud.version>
+
+		<!-- 容器相关属性配置 -->
+		<docker.plugin.version>0.4.13</docker.plugin.version>
+		<docker.image.from>jre:8</docker.image.from>
+		<docker.registry.server>10.211.55.10:81</docker.registry.server>
+		<docker.image.prefix>puppys</docker.image.prefix>
+		<docker.image.timezone>Asia/Shanghai</docker.image.timezone>
+	</properties>
+
+
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-gateway</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
+	</dependencies>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>docker-maven-plugin</artifactId>
+				<version>${docker.plugin.version}</version>
+				<configuration>
+					<!--serverId对应maven setting.xml文件内配置的server id,用于读取registry的账号密码-->
+					<serverId>my-docker-registry</serverId>
+					<!--生成的镜像名
+					docker.registry.server : registry服务的地址, 可以是域名也可以是IP
+					docker.image.prefix : 上传镜像的用户名
+					project.artifactId : 服务名
+					-->
+					<imageName>${docker.registry.server}/${docker.image.prefix}/${project.artifactId}</imageName>
+					<imageTags>
+						<!--这里写了两个,会生成两个镜像-->
+						<imageTag>${project.version}</imageTag>
+						<imageTag>latest</imageTag>
+					</imageTags>
+					<!--看名字就知道了, 基于的镜像名, 可以直接用本地的镜像-->
+					<baseImage>${docker.image.from}</baseImage>
+					<!-- 容器启动时运行的命令
+					ENTRYPOINT 看上去与 CMD 很像不同的地方在于 ENTRYPOINT 不会被忽略，一定会被执行，即使运行 docker run 时指定了其他命令。
+					-->
+					<entryPoint>["java", "-jar", "/${project.build.finalName}.jar"]</entryPoint>
+					<runs>
+						<!--设置容器的时区-->
+						<run><![CDATA[ln -snf /usr/share/zoneinfo/${docker.image.timezone} /etc/localtime && echo ${docker.image.timezone} > /etc/timezone]]></run>
+					</runs>
+					<resources>
+						<resource>
+							<!--将打包好的jar包放到镜像的根目录中-->
+							<targetPath>/</targetPath>
+							<!--打包好的jar包存放目录-->
+							<directory>${project.build.directory}</directory>
+							<!--打包号的jar包名-->
+							<include>${project.build.finalName}.jar</include>
+						</resource>
+					</resources>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+
+</project>
